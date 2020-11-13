@@ -1,78 +1,51 @@
-// mmap, т.к. файл может быть размера больше 64М,
-// а нам надо передать содержимое всего файла сразу.
-// Мы, грубо говоря, не можем сделать несколько вызовов exec,
-// передавая каждый раз разные части входного файла.
-
-#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
-off_t FileSize(int file)
-{
-    assert(file >= 0);
-
-    struct stat fStat = {};
-    if (fstat(file, &fStat) == -1)
-        return -1;
-
-    return fStat.st_size;
-}
-
-off_t FileSizeStr(const char* fName)
-{
-    struct stat fStat = {};
-    if (stat(fName, &fStat) == -1)
-        return -1;
-
-    return fStat.st_size;
-}
+enum { STDIN = 0, STDOUT = 1, STDERR = 2 };
 
 int main(const int argc, const char* argv[])
 {
-    const char* fOutName = "output.txt";
-
-    if (argc != 3)
+    if (argc != 3) {
         return -1;
+    }
 
-    int fIn = open(argv[2], O_RDONLY);
-    if (-1 == fIn)
+    int pipefd[2] = {0};
+    if (pipe(pipefd) == -1) {
         return -1;
+    }
 
-    off_t fSize = FileSize(fIn);
-    char* fileBuf = mmap(NULL, fSize, PROT_READ, MAP_SHARED, fIn, 0);
+    int fd = open(argv[2], O_RDONLY);
+    if (-1 == fd) {
+        return -1;
+    }
 
     pid_t process = fork();
     if (-1 == process) {
         return -1;
     } else if (0 == process) {
-        int fOut = open(fOutName, O_WRONLY | O_CREAT, 0666);
-        if (-1 == fOut)
-            return -1;
+        dup2(fd, STDIN);
+        dup2(pipefd[1], STDOUT);
 
-        if (dup2(fOut, 1) == -1)
-            return -1;
+        close(pipefd[0]);
+        close(pipefd[1]);
 
-        if (0 == fSize)
-            execlp(argv[1], argv[1], NULL);
-        execlp(argv[1], argv[1], fileBuf, NULL);
+        execlp(argv[1], argv[1], NULL);
     }
 
-    int procExisStatus = 0;
-    wait(&procExisStatus);
+    close(pipefd[1]);
 
-    off_t ans = FileSizeStr(fOutName);
-    printf("%ld\n", ans);
+    int ans = 0;
+    char curCh = 0;
+    while (read(pipefd[0], &curCh, 1) > 0) {
+        ++ans;
+    }
 
-    munmap(fileBuf, fSize);
-    close(fIn);
+    printf("%d\n", ans);
 
-    unlink(fOutName);
+    close(fd);
+    close(pipefd[0]);
 
     return 0;
 }

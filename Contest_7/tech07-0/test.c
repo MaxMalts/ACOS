@@ -1,8 +1,10 @@
 #include <stdio.h>
 
 
-int main(const int argc, const char* argv[]) {
-	printf("%s\n", argv[1]);
+int main() {
+	char str[100] = "";
+	scanf("%s", str);
+	printf("%s", str);
 
 	return 0;
 }
