@@ -3,8 +3,11 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+enum { STDIN = 0, STDOUT = 1, STDERR = 2 };
 
 void OutputPid()
 {
@@ -27,15 +30,17 @@ void UsrHandler(int signal)
         num *= -1;
     }
 
-    printf("%d\n", num);
-    fflush(stdout);
+    char buf[100] = "";
+    snprintf(buf, sizeof(buf), "%d\n", num);
+
+    write(STDOUT, buf, strlen(buf));
 
     sigprocmask(SIG_UNBLOCK, &sigset, NULL);
 }
 
 void TermHandler(int signal)
 {
-    exit(0);
+    _exit(0);
 }
 
 int main()

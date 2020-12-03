@@ -12,7 +12,7 @@ void SigHandler(int signal, siginfo_t* info, void* context)
 {
     int val = info->si_value.sival_int;
     if (0 == val) {
-        exit(0);
+        _exit(0);
     }
 
     union sigval sigVal;
@@ -22,7 +22,7 @@ void SigHandler(int signal, siginfo_t* info, void* context)
 
 void TermHandler(int signal)
 {
-    exit(0);
+    _exit(0);
 }
 
 int main()
